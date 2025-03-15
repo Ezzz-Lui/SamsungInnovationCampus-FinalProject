@@ -47,7 +47,7 @@
 python manage.py extract_features
 
 # Entrenamiento de modelos
-python manage.py train_model --algorithm rf --features all
+python manage.py train_model --name "nombre_del_modelo" --algorithm rf --features all
 
 # Generación de predicciones
 python manage.py predict --model_id 1 --article_id 100
