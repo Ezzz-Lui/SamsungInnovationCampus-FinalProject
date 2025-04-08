@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-*0)46e7^g7sxqxdwr=y&y^unlh!_fc@4f*j^j^j)#)al5xdz8*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['django-sic-ai-api.azurewebsites.net','127.0.0.1','http://localhost:3000','https://samsung-innovation-campus-final-project.vercel.app','samsunginnovationcampus-finalpro-production.up.railway.app']
+ALLOWED_HOSTS = ['django-sic-ai-api.azurewebsites.net','django-sic-ai-api.azurewebsites.net','127.0.0.1','http://localhost:3000','https://samsung-innovation-campus-final-project.vercel.app','samsunginnovationcampus-finalpro-production.up.railway.app']
 
 # Application definition
 
