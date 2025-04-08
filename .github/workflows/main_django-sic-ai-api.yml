@@ -79,4 +79,3 @@ jobs:
           app-name: 'django-sic-ai-api'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F15D3C7F94DA4D7BA0A5986356C95E40 }}
-          startup-command: gunicorn fake_news_api_back.wsgi --bind=0.0.0.0:8000
