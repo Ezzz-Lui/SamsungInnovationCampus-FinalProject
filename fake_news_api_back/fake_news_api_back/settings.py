@@ -53,7 +53,7 @@ INSTALLED_APPS = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "django-sic-ai-api.azurewebsites.net",
+    "https://django-sic-ai-api.azurewebsites.net",
     "https://samsung-innovation-campus-final-project.vercel.app",
     "https://samsunginnovationcampus-finalpro-production.up.railway.app",
     "http://127.0.0.1:8000"# Ajusta según el puerto de tu Next.js
