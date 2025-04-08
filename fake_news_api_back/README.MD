@@ -1,4 +1,5 @@
-# Fake News Prediction API
+# Fake News Prediction API - Azure API
+
 
 This API allows users to predict whether a news article is fake or real using machine learning models. It also provides insights and statistics about predictions and trained models.
 
