@@ -1,0 +1,18 @@
+# Azure Web App configuration
+language: python
+python:
+  version: 3.10
+
+startup_command: gunicorn fake_news_api_back.wsgi --bind=0.0.0.0:8000
+
+pre_build:
+  commands:
+    - apt-get update
+    - apt-get install -y tesseract-ocr tesseract-ocr-spa libtesseract-dev libleptonica-dev pkg-config
+
+build:
+  commands:
+    - pip install -r requirements.txt
+    - python -m nltk.downloader -d /app/nltk_data stopwords punkt
+    - python manage.py collectstatic --noinput
+    - python manage.py prodmigrate
