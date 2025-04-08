@@ -5,6 +5,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from PIL import Image
 import os
+import platform
 # Cargar las stopwords en español
 try:
     stop_words = set(stopwords.words("spanish"))
@@ -56,15 +57,24 @@ def preprocess_text(text):
     # Unir las palabras procesadas en una sola cadena
     return " ".join(filtered_words)
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# Configurar Tesseract según el sistema operativo
+system = platform.system()
 
-# Le decimos a Tesseract dónde está la carpeta de idiomas
-os.environ['TESSDATA_PREFIX'] = r'C:\Program Files\Tesseract-OCR\tessdata'
+if system == 'Windows':
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    os.environ['TESSDATA_PREFIX'] = r'C:\Program Files\Tesseract-OCR\tessdata'
+else:  # Linux (Railway)
+    # En Linux, Tesseract usará la instalación del sistema
+    os.environ['TESSDATA_PREFIX'] = '/usr/share/tesseract-ocr/4.00/tessdata'
 
 def extract_text_from_image(image_file):
     """
     Recibe un archivo de imagen y extrae texto usando OCR.
     """
-    image = Image.open(image_file)
-    extracted_text = pytesseract.image_to_string(image, lang='spa')  
-    return extracted_text
+    try:
+        image = Image.open(image_file)
+        extracted_text = pytesseract.image_to_string(image, lang='spa')
+        return extracted_text
+    except Exception as e:
+        print(f"Error al procesar la imagen: {str(e)}")
+        return "Error al procesar la imagen"
