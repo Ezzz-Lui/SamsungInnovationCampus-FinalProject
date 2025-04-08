@@ -31,14 +31,6 @@ jobs:
           source venv/bin/activate
           python -m pip install --upgrade pip
           pip install -r fake_news_api_back/requirements.txt
-
-      - name: Cache Python dependencies
-        uses: actions/cache@v3
-        with:
-            path: ~/.cache/pip
-            key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-            restore-keys: |
-              ${{ runner.os }}-pip-
   
       - name: Install Python dependencies
         run: |
@@ -52,7 +44,9 @@ jobs:
           python manage.py collectstatic --noinput
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        run: |
+          cd fake_news_api_back
+          zip -r ../release.zip ./*
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
@@ -85,3 +79,4 @@ jobs:
           app-name: 'django-sic-ai-api'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F15D3C7F94DA4D7BA0A5986356C95E40 }}
+          startup-command: gunicorn fake_news_api_back.wsgi --bind=0.0.0.0:8000
