@@ -38,6 +38,7 @@ jobs:
       - name: Run Django commands (collectstatic, migrate)
         run: |
           source venv/bin/activate
+          cd fake_news_api_back
           python manage.py collectstatic --noinput
           python manage.py prodmigrate
 
