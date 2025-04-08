@@ -1,7 +1,6 @@
 annotated-types==0.7.0
 asgiref==3.8.1
 beautifulsoup4==4.13.3
-blis==1.2.0
 catalogue==2.0.10
 certifi==2025.1.31
 charset-normalizer==3.4.1
@@ -17,7 +16,11 @@ Django==5.1.6
 django-cors-headers==4.7.0
 djangorestframework==3.15.2
 drf-yasg==1.21.9
-es_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl#sha256=e451a83d6df79b87e9eed0cb553f03e99e36a3bab18a7b79f0dcfd1fdf875e12
+# Reemplazando la versión específica de blis con una compatible
+blis>=0.7.9
+# Quitando la dependencia específica de es_core_news_sm para instalarla con spacy
+# es_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl#sha256=e451a83d6df79b87e9eed0cb553f03e99e36a3bab18a7b79f0dcfd1fdf875e12
+spacy>=3.7.0
 feedfinder2==0.0.4
 feedparser==6.0.11
 filelock==3.18.0
@@ -46,7 +49,7 @@ packaging==24.2
 pandas==2.2.3
 pillow==11.1.0
 preshed==3.0.9
-psycopg2==2.9.10
+psycopg2-binary==2.9.10
 pydantic==2.10.6
 pydantic_core==2.27.2
 Pygments==2.19.1
@@ -69,14 +72,10 @@ shellingham==1.5.4
 six==1.17.0
 smart-open==7.1.0
 soupsieve==2.6
-spacy==3.8.4
-spacy-legacy==3.0.12
-spacy-loggers==1.0.5
 sqlparse==0.5.3
 srsly==2.5.1
 swagger-ui-py==23.9.23
 termcolor==2.5.0
-thinc==8.3.4
 threadpoolctl==3.6.0
 tinysegmenter==0.3
 tldextract==5.1.3
