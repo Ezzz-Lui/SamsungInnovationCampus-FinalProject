@@ -6,7 +6,8 @@ import {
   analyzeNews,
   analyzeNewsByImage,
   analyzeNewsByUrl,
-  analyzeNewsByAudio, // 👈 NUEVO
+  analyzeNewsByAudio, 
+  analyzeDeepfake,
 } from "@/lib/api";
 import {
   Loader2,
@@ -16,6 +17,8 @@ import {
   AlertTriangle,
   Terminal,
   Mic,
+  ScanFace,
+  ShieldCheck, ShieldOff
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -30,11 +33,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { AnalysisResults } from "@/components/analysis-results";
+import { AnalysisResults as OriginalAnalysisResults } from "@/components/analysis-results";
 
-type InputType = "text" | "url" | "image" | "audio" | "devs";
+type InputType = "text" | "url" | "image" | "deepfake" | "audio" | "devs";
 type AnalysisStatus = "idle" | "loading" | "success" | "error";
 type PredictionMode = "default" | "all" | "single";
+
 
 interface AnalysisResult {
   final_prediction: string;
@@ -50,6 +54,15 @@ interface AnalysisResult {
     publish_date: string | null;
     text: string;
     top_image: string | null;
+  };
+  raw_result?: {
+    status: string;
+    type?: { ai_generated: number };
+    data?: {
+      frames: Array<{
+        type: { ai_generated: number };
+      }>;
+    };
   };
 }
 
@@ -128,6 +141,10 @@ export function NewsAnalyzer() {
       } else if (effectiveInputType === "audio") {
         if (!audioFile) throw new Error("Please upload an audio file");
         data = await analyzeNewsByAudio(audioFile); // 👈 NUEVO
+      }
+      else if (effectiveInputType === "deepfake") {
+        if (!imageFile) throw new Error("Please upload an image or video");
+        data = await analyzeDeepfake(imageFile); 
       }
 
       console.log("API Response:", data);
@@ -275,7 +292,11 @@ export function NewsAnalyzer() {
               </div>
             </div>
           ) : result ? (
-            <AnalysisResults result={result} onReset={resetForm} />
+            inputType === 'deepfake' ? (
+              <DeepfakeAnalysisResults result={result} onReset={resetForm} />
+            ) : (
+              <OriginalAnalysisResults result={result} onReset={resetForm} />
+            )
           ) : (
             <>
               <Tabs
@@ -286,28 +307,33 @@ export function NewsAnalyzer() {
                   )
                 }
               >
-                <TabsList className="grid w-full grid-cols-5 mb-6">
-                  <TabsTrigger value="general">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Text
-                  </TabsTrigger>
-                  <TabsTrigger value="url">
-                    <LinkIcon className="mr-2 h-4 w-4" />
-                    URL
-                  </TabsTrigger>
-                  <TabsTrigger value="image">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Image
-                  </TabsTrigger>
-                  <TabsTrigger value="audio">
-                    <Mic className="mr-2 h-4 w-4" />
-                    Audio
-                  </TabsTrigger>
-                  <TabsTrigger value="devs">
-                    <Terminal className="mr-2 h-4 w-4" />
-                    For Devs
-                  </TabsTrigger>
-                </TabsList>
+               <TabsList className="grid w-full grid-cols-6 mb-6">
+                <TabsTrigger value="general">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Text
+                </TabsTrigger>
+                <TabsTrigger value="url">
+                  <LinkIcon className="mr-2 h-4 w-4" />
+                  URL
+                </TabsTrigger>
+                <TabsTrigger value="image">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Image
+                </TabsTrigger>
+                <TabsTrigger value="audio">
+                  <Mic className="mr-2 h-4 w-4" />
+                  Audio
+                </TabsTrigger>
+                <TabsTrigger value="deepfake">
+                  <ScanFace className="mr-2 h-4 w-4" />
+                  Deepfake
+                </TabsTrigger>
+                
+                <TabsTrigger value="devs">
+                  <Terminal className="mr-2 h-4 w-4" />
+                  For Devs
+                </TabsTrigger>
+              </TabsList>
 
                 {/* General Mode */}
                 <TabsContent value="general">
@@ -445,6 +471,41 @@ export function NewsAnalyzer() {
                     </div>
                   </div>
                 </TabsContent>
+                <TabsContent value="deepfake">
+                  <div className="space-y-4">
+                    <Label htmlFor="deepfake-input">
+                      Upload an image or video to detect if it's AI-generated
+                    </Label>
+                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                      <Input
+                        id="deepfake-input"
+                        type="file"
+                        accept="image/*,video/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            console.log("Selected deepfake file:", e.target.files[0]);
+                            setImageFile(e.target.files[0]); // usamos el mismo state imageFile
+                          }
+                        }}
+                      />
+                      <Label
+                        htmlFor="deepfake-input"
+                        className="flex flex-col items-center justify-center cursor-pointer"
+                      >
+                        <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+                        <span className="text-sm font-medium">
+                          {imageFile
+                            ? imageFile.name
+                            : "Click to upload or drag and drop"}
+                        </span>
+                        <span className="text-xs text-muted-foreground mt-1">
+                          MP4, MOV, JPG, PNG (max 20 MB)
+                        </span>
+                      </Label>
+                    </div>
+                  </div>
+                </TabsContent>
               </Tabs>
             </>
           )}
@@ -473,6 +534,49 @@ export function NewsAnalyzer() {
           )}
         </CardFooter>
       </Card>
+    </div>
+  );
+}
+
+function DeepfakeAnalysisResults({ result, onReset }: { result: AnalysisResult; onReset: () => void }) {
+  const isAiGenerated = result.final_prediction.toLowerCase().includes('ai-generated');
+  const confidence = result.confidence ?? 0;
+  const isVideo = !!(result.raw_result?.data?.frames);
+
+  const getRingColor = () => {
+    if (isAiGenerated) {
+      if (confidence > 0.9) return 'ring-red-500';
+      if (confidence > 0.7) return 'ring-orange-500';
+      return 'ring-yellow-500';
+    }
+    return 'ring-green-500';
+  };
+
+  const getTextColor = () => {
+    if (isAiGenerated) {
+      if (confidence > 0.9) return 'text-red-600';
+      if (confidence > 0.7) return 'text-orange-600';
+      return 'text-yellow-600';
+    }
+    return 'text-green-600';
+  };
+
+  return (
+    <div className="flex flex-col items-center text-center p-6">
+      <div className={`relative w-32 h-32 mb-4`}>
+        <div className={`absolute inset-0 rounded-full ring-4 ${getRingColor()} ring-offset-4 animate-pulse`}></div>
+        {isAiGenerated ? (
+          <ShieldOff className={`w-full h-full ${getTextColor()}`} />
+        ) : (
+          <ShieldCheck className={`w-full h-full ${getTextColor()}`} />
+        )}
+      </div>
+      <h2 className={`text-2xl font-bold ${getTextColor()}`}>{result.final_prediction}</h2>
+      <p className="text-lg text-muted-foreground">Confidence: {(confidence * 100).toFixed(2)}%</p>
+      <div className="mt-6 text-left bg-muted/50 p-4 rounded-lg w-full">
+        <h3 className="font-semibold mb-2">Explanation:</h3>
+        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{result.explanation}</p>
+      </div>
     </div>
   );
 }
