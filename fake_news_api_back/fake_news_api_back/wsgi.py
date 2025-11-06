@@ -17,9 +17,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'fake_news_api_back.settings')
 import nltk
 nltk.data.path.append("/app/nltk_data")  # Cambia "/app/nltk_data" al directorio deseado
 
-# Configurar el directorio de datos de NLTK
-nltk.data.path.append("/app/nltk_data")  
-
 # Descargar datos de NLTK si no existen
 for resource in ['stopwords', 'punkt', 'punkt_tab']:
     try:
