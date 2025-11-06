@@ -55,3 +55,13 @@ export async function analyzeNewsByAudio(audioFile: File) {
   }
   return res.json();
 }
+
+export async function analyzeDeepfake(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await axios.post(`${BASE_URL}/api/analyze-deepfake/`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+}
