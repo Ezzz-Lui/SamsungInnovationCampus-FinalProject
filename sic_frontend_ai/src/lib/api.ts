@@ -53,5 +53,5 @@ export async function analyzeNewsByAudio(audioFile: File) {
     const t = await res.text();
     throw new Error(t || `HTTP ${res.status}`);
   }
-  return res.json(); // devuelve {final_prediction, explanation, ...}
+  return res.json();
 }
