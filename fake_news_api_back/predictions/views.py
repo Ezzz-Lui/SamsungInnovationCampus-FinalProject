@@ -17,6 +17,7 @@ from django.conf import settings
 from rest_framework.decorators import api_view
 from newspaper import Article
 from django.http import JsonResponse
+import os
 
 
 class ExplanationGenerator:
@@ -477,3 +478,109 @@ def analyze_article_by_url(request):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+
+SIGHTENGINE_URL = "https://api.sightengine.com/1.0/check.json"
+API_USER = os.getenv("SIGHTENGINE_API_USER")
+API_SECRET = os.getenv("SIGHTENGINE_API_SECRET")
+
+class DeepfakeDetectionView(APIView):
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+
+    @swagger_auto_schema(
+        operation_description="Sube una imagen o vídeo para detectar si es generado por IA o es deepfake.",
+        tags=["Deepfake Detection"],
+
+    )
+    def post(self, request):
+        file = request.FILES.get('file')
+        if not file:
+            return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Detectar tipo por extensión simple
+        is_video = file.name.lower().endswith(('.mp4', '.mov', '.avi', '.mkv'))
+
+        # Preparar petición a Sightengine
+        files = {'media': file}
+        data = {
+            'models': 'genai',
+            'api_user': API_USER,
+            'api_secret': API_SECRET
+            
+        }
+
+        # Si es vídeo, se puede usar endpoint de vídeo
+        if is_video:
+            # vídeo síncrono pequeño (< 1 min) según docs: https://.../video/check-sync.json
+            # o vídeo largo/async: /video/check.json con callback
+            url = "https://api.sightengine.com/1.0/video/check-sync.json"
+        else:
+            url = SIGHTENGINE_URL  # para imagen
+
+        try:
+            resp = requests.post(url, files=files, data=data)
+            resp.raise_for_status()
+        except Exception as e:
+            return Response({"error": f"Error calling Sightengine API: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        result = resp.json()
+
+        # Determinar si es un video (tiene 'frames') o una imagen
+        is_video_result = 'data' in result and 'frames' in result['data']
+
+        if is_video_result and result['data']['frames']:
+            # Es un video, encontrar la probabilidad máxima de IA entre los fotogramas
+            frame_probs = [frame.get('type', {}).get('ai_generated', 0) for frame in result['data']['frames']]
+            ai_generated_prob = max(frame_probs) if frame_probs else 0
+        else:
+            # Es una imagen
+            ai_generated_prob = result.get('type', {}).get('ai_generated', 0)
+
+        
+        if ai_generated_prob > 0.75:
+            final_prediction = "AI-Generated"
+            confidence = ai_generated_prob
+            explanation_text = f"La imagen o video es muy probablemente generado por IA con una confianza del {confidence:.2%}."
+        elif ai_generated_prob > 0.5:
+            final_prediction = "Likely AI-Generated"
+            confidence = ai_generated_prob
+            explanation_text = f"La imagen o video es posiblemente generado por IA con una confianza del {confidence:.2%}."
+        else:
+            final_prediction = "Likely Real"
+            confidence = 1 - ai_generated_prob
+            explanation_text = f"La imagen o video es probablemente real con una confianza del {confidence:.2%}."
+
+        media_type = "video" if is_video_result else "imagen"
+
+        prompt_for_explanation = f"""
+        Eres un asistente experto en la detección de deepfakes y contenido generado por inteligencia artificial.
+        Analiza el siguiente resultado del modelo Sightengine sobre una {media_type}.
+
+        Resultado del análisis: {json.dumps(result, indent=2)}
+
+        Explica de forma sencilla por qué se ha llegado a esta conclusión. 
+        - Predicción final: {final_prediction}
+        - Confianza: {confidence:.2%}
+
+        Si el archivo es un video, tu explicación debe basarse en el análisis de los fotogramas. Menciona cómo las probabilidades de IA en los diferentes fotogramas llevan a la conclusión final. Por ejemplo, si la mayoría de los fotogramas tienen una alta probabilidad de ser generados por IA, el video es sospechoso.
+        
+        Si el archivo es una imagen, enfócate en las posibles señales que el modelo pudo haber detectado (piel demasiado suave, fondos distorsionados, etc.).
+
+        Menciona posibles artefactos visuales, inconsistencias en el movimiento, en el parpadeo o en los labios, texturas extrañas o iluminación incoherente que el modelo pudo haber detectado.
+
+        Aclara que esta es una evaluación probabilística y no una certeza absoluta.
+        """
+
+        explanation = explanation_generator.generate_explanation(
+            prompt_for_explanation,
+            result,
+            final_prediction,
+            confidence
+        )
+
+        return Response({
+            "final_prediction": final_prediction,
+            "confidence": round(confidence, 4),
+            "explanation": explanation,
+            "raw_result": result # Devolvemos el resultado original por si es útil
+        }, status=status.HTTP_200_OK)
