@@ -37,3 +37,21 @@ export async function analyzeNewsByImage(imageFile: File) {
   });
   return response.data;
 }
+
+
+export async function analyzeNewsByAudio(audioFile: File) {
+  const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const formData = new FormData();
+  formData.append("audio", audioFile);
+
+  const res = await fetch(`${BASE_URL}/api/analyze-audio/`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(t || `HTTP ${res.status}`);
+  }
+  return res.json();
+}

@@ -1,8 +1,22 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { analyzeNews, analyzeNewsByImage, analyzeNewsByUrl } from "@/lib/api";
+import {
+  analyzeNews,
+  analyzeNewsByImage,
+  analyzeNewsByUrl,
+  analyzeNewsByAudio, // 👈 NUEVO
+} from "@/lib/api";
+import {
+  Loader2,
+  Upload,
+  LinkIcon,
+  FileText,
+  AlertTriangle,
+  Terminal,
+  Mic,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,17 +30,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import {
-  Loader2,
-  Upload,
-  LinkIcon,
-  FileText,
-  AlertTriangle,
-  Terminal,
-} from "lucide-react";
 import { AnalysisResults } from "@/components/analysis-results";
 
-type InputType = "text" | "url" | "image" | "devs";
+type InputType = "text" | "url" | "image" | "audio" | "devs";
 type AnalysisStatus = "idle" | "loading" | "success" | "error";
 type PredictionMode = "default" | "all" | "single";
 
@@ -60,6 +66,7 @@ export function NewsAnalyzer() {
   const [textInput, setTextInput] = useState("");
   const [urlInput, setUrlInput] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [status, setStatus] = useState<AnalysisStatus>("idle");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,12 +77,18 @@ export function NewsAnalyzer() {
   const [predictionMode, setPredictionMode] =
     useState<PredictionMode>("default");
   const [selectedModel, setSelectedModel] = useState<string>("naive_bayes");
-  const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
-  const [progress, setProgress] = useState(0)
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setImageFile(e.target.files[0]);
+    }
+  };
+
+  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setAudioFile(e.target.files[0]);
     }
   };
 
@@ -85,13 +98,18 @@ export function NewsAnalyzer() {
 
     try {
       let data;
-      console.log("Input type:", inputType); 
-  
-      const effectiveInputType = inputType === "devs" ? "text" : inputType;
-  
+      console.log("Input type:", inputType);
+
+      // Mapear 'general' y 'devs' a 'text'
+      const effectiveInputType =
+        inputType === "devs" || (inputType as any) === "general"
+          ? "text"
+          : inputType;
+
       if (effectiveInputType === "text") {
-        if (!textInput.trim()) throw new Error("Please enter some text to analyze");
-  
+        if (!textInput.trim())
+          throw new Error("Please enter some text to analyze");
+
         if (predictionMode === "all") {
           data = await analyzeNews(textInput, "all");
         } else if (predictionMode === "single") {
@@ -102,18 +120,21 @@ export function NewsAnalyzer() {
         }
       } else if (effectiveInputType === "url") {
         if (!urlInput.trim()) throw new Error("Please enter a valid URL");
-        console.log("Analyzing URL:", urlInput); 
+        console.log("Analyzing URL:", urlInput);
         data = await analyzeNewsByUrl(urlInput);
       } else if (effectiveInputType === "image") {
         if (!imageFile) throw new Error("Please upload an image");
         data = await analyzeNewsByImage(imageFile);
+      } else if (effectiveInputType === "audio") {
+        if (!audioFile) throw new Error("Please upload an audio file");
+        data = await analyzeNewsByAudio(audioFile); // 👈 NUEVO
       }
 
       console.log("API Response:", data);
       setResult(data);
       setStatus("success");
     } catch (err) {
-      console.error("Error:", err); 
+      console.error("Error:", err);
       setError(
         err instanceof Error ? err.message : "An unknown error occurred"
       );
@@ -135,29 +156,30 @@ export function NewsAnalyzer() {
   useEffect(() => {
     // Message rotation
     const messageInterval = setInterval(() => {
-      setCurrentMessageIndex((prev) => (prev + 1) % messages.length)
-    }, 3000)
+      setCurrentMessageIndex((prev) => (prev + 1) % messages.length);
+    }, 3000);
 
     // Progress animation
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
-          return 0
+          return 0;
         }
-        return prev + 1
-      })
-    }, 30)
+        return prev + 1;
+      });
+    }, 30);
 
     return () => {
-      clearInterval(messageInterval)
-      clearInterval(progressInterval)
-    }
-  }, [messages.length])
+      clearInterval(messageInterval);
+      clearInterval(progressInterval);
+    };
+  }, [messages.length]);
 
   const resetForm = () => {
     setTextInput("");
     setUrlInput("");
     setImageFile(null);
+    setAudioFile(null);
     setResult(null);
     setError(null);
     setStatus("idle");
@@ -165,7 +187,7 @@ export function NewsAnalyzer() {
 
   useEffect(() => {
     if (status === "loading") {
-      const messages = [
+      const msgs = [
         "Extrayendo el contenido...",
         "Procesando datos...",
         "Procesando con Machine learning...",
@@ -179,8 +201,8 @@ export function NewsAnalyzer() {
       let index = 0;
 
       const interval = setInterval(() => {
-        setLoadingMessage(messages[index]);
-        index = (index + 1) % messages.length;
+        setLoadingMessage(msgs[index]);
+        index = (index + 1) % msgs.length;
       }, 2500);
 
       return () => clearInterval(interval);
@@ -199,69 +221,72 @@ export function NewsAnalyzer() {
         <CardContent>
           {status === "loading" ? (
             <div className="flex flex-col items-center justify-cente p-4">
-            <div className="w-full max-w-md rounded-xl shadow-lg overflow-hidden">
-      
-              <div className="p-6">
-                <div className="flex justify-center mb-6">
-                  <motion.div
-                    className="w-10 h-10 border-4 border-yellow-100 border-t-yellow-500 rounded-full"
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 1,
-                      repeat: Number.POSITIVE_INFINITY,
-                      ease: "linear",
-                    }}
-                  />
-                </div>
-      
-                <div className="h-16 flex items-center justify-center">
-                  <AnimatePresence mode="wait">
+              <div className="w-full max-w-md rounded-xl shadow-lg overflow-hidden">
+                <div className="p-6">
+                  <div className="flex justify-center mb-6">
                     <motion.div
-                      key={currentMessageIndex}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
+                      className="w-10 h-10 border-4 border-yellow-100 border-t-yellow-500 rounded-full"
+                      animate={{ rotate: 360 }}
                       transition={{
-                        duration: 0.5,
-                        ease: "easeInOut",
-                      }}
-                      className="text-center text-gray-700 font-medium"
-                    >
-                      {messages[currentMessageIndex]}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-      
-                <div className="flex justify-center mt-4 space-x-2">
-                  {[0, 1, 2].map((i) => (
-                    <motion.div
-                      key={i}
-                      className="w-2 h-2 bg-yellow-500 rounded-full"
-                      animate={{
-                        opacity: [0.3, 1, 0.3],
-                        scale: [0.8, 1.2, 0.8],
-                      }}
-                      transition={{
-                        duration: 1.5,
+                        duration: 1,
                         repeat: Number.POSITIVE_INFINITY,
-                        delay: i * 0.2,
-                        ease: "easeInOut",
+                        ease: "linear",
                       }}
                     />
-                  ))}
+                  </div>
+
+                  <div className="h-16 flex items-center justify-center">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={currentMessageIndex}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{
+                          duration: 0.5,
+                          ease: "easeInOut",
+                        }}
+                        className="text-center text-gray-700 font-medium"
+                      >
+                        {messages[currentMessageIndex]}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="flex justify-center mt-4 space-x-2">
+                    {[0, 1, 2].map((i) => (
+                      <motion.div
+                        key={i}
+                        className="w-2 h-2 bg-yellow-500 rounded-full"
+                        animate={{
+                          opacity: [0.3, 1, 0.3],
+                          scale: [0.8, 1.2, 0.8],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Number.POSITIVE_INFINITY,
+                          delay: i * 0.2,
+                          ease: "easeInOut",
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
           ) : result ? (
             <AnalysisResults result={result} onReset={resetForm} />
           ) : (
             <>
               <Tabs
                 defaultValue="general"
-                onValueChange={(value) => setInputType(value as InputType)}
+                onValueChange={(value) =>
+                  setInputType(
+                    value === "general" ? "text" : (value as InputType)
+                  )
+                }
               >
-                <TabsList className="grid w-full grid-cols-4 mb-6">
+                <TabsList className="grid w-full grid-cols-5 mb-6">
                   <TabsTrigger value="general">
                     <FileText className="mr-2 h-4 w-4" />
                     Text
@@ -273,6 +298,10 @@ export function NewsAnalyzer() {
                   <TabsTrigger value="image">
                     <Upload className="mr-2 h-4 w-4" />
                     Image
+                  </TabsTrigger>
+                  <TabsTrigger value="audio">
+                    <Mic className="mr-2 h-4 w-4" />
+                    Audio
                   </TabsTrigger>
                   <TabsTrigger value="devs">
                     <Terminal className="mr-2 h-4 w-4" />
@@ -377,7 +406,7 @@ export function NewsAnalyzer() {
                         className="hidden"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
-                            console.log("Selected file:", e.target.files[0]); // Depuración
+                            console.log("Selected file:", e.target.files[0]);
                             setImageFile(e.target.files[0]);
                           }
                         }}
@@ -396,6 +425,23 @@ export function NewsAnalyzer() {
                           PNG, JPG up to 10MB
                         </span>
                       </Label>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="audio">
+                  <div className="space-y-4">
+                    <Label htmlFor="audio-input">Sube un archivo de audio</Label>
+                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                      <Input
+                        id="audio-input"
+                        type="file"
+                        accept="audio/*"
+                        onChange={handleAudioChange}
+                      />
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Formatos soportados: .mp3, .wav, .m4a (máx 20 MB)
+                      </p>
                     </div>
                   </div>
                 </TabsContent>
