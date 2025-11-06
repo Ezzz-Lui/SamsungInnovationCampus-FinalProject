@@ -2,6 +2,7 @@ from django.urls import path
 from .views import PredictNewsView, PredictWithModelView, InsightsView, ModelStatsView, PredictWithAllModelsView, analyze_article_by_url
 from .views import PredictFromImageView  
 from .views_audio_whisper import AnalyzeAudioWhisperView 
+from .views import DeepfakeDetectionView
 urlpatterns = [
     path("predict/v1/api/ai/default", PredictNewsView.as_view(), name="predict"),
     path("predict/v1/api/ai/custom-type/<str:model_type>/", PredictWithModelView.as_view(), name="predict_with_model"),
@@ -11,4 +12,6 @@ urlpatterns = [
     path("predict/v1/api/ai/image", PredictFromImageView.as_view(), name="predict_from_image"),
     path('analyze-url/', analyze_article_by_url, name='analyze_article_by_url'),
     path("analyze-audio/", AnalyzeAudioWhisperView.as_view(), name="analyze_audio"),
+    path("analyze-deepfake/", DeepfakeDetectionView.as_view(), name="deepfake_detection"),
+    
 ]
